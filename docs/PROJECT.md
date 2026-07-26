@@ -105,7 +105,7 @@ In scope:
 - Must run as a single deployable modular monolith (no microservices) per architectural mandate.
 - Must be operable by a small platform team (favor operational simplicity over exotic infrastructure).
 - All data must be auditable to a standard consistent with internal bank audit and regulatory expectations, even though this is a portfolio project and not a regulated production system.
-- Stack is fixed: Laravel 12 / PHP 8.3+ / MySQL / Redis / Vue 3 / Inertia (see ARCHITECTURE.md).
+- Stack is fixed: Laravel 12 / PHP 8.3+ / PostgreSQL (Supabase-hosted) / Redis / Vue 3 / Inertia (see ARCHITECTURE.md and DECISIONS.md ADR-008).
 
 ## 11. Future Roadmap (Beyond TBIP)
 

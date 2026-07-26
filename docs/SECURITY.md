@@ -65,7 +65,7 @@ Policies are the single source of truth for authorization — controllers call `
 ## 7. Encryption
 
 - Data in transit: TLS terminated at the load balancer/Nginx (see DEPLOYMENT.md); HTTP redirects to HTTPS in all non-local environments.
-- Data at rest: database-level encryption is an infrastructure/managed-MySQL concern (assumed provided by the hosting platform), not application-implemented — the application does not roll its own row-level encryption for Phase 1–6, since it would complicate querying/indexing without a demonstrated regulatory requirement in this portfolio project's scope.
+- Data at rest: database-level encryption is an infrastructure/managed-database concern (Supabase-managed PostgreSQL encrypts at rest by default), not application-implemented — the application does not roll its own row-level encryption for Phase 1–6, since it would complicate querying/indexing without a demonstrated regulatory requirement in this portfolio project's scope.
 - Application secrets (DB credentials, mail credentials, `APP_KEY`) via environment variables, never committed — see DEPLOYMENT.md §3.
 
 ## 8. Security Headers

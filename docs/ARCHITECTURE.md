@@ -53,7 +53,7 @@ Application Layer Actions (single business operation), Services (multi-step orch
    |
 Domain Layer       Models, DTOs, Enums, Value Objects, domain Events
    |
-Infrastructure     Eloquent/MySQL, Redis, Queue, Storage, Mail
+Infrastructure     Eloquent/PostgreSQL (Supabase), Redis, Queue, Storage, Mail
 ```
 
 - **Actions** perform one discrete business operation (e.g., `ProposeBreakResolution`, `ApproveCaseResolution`) and are the primary unit of business logic — invokable, single `handle()`/`execute()` method, easily unit-testable.
