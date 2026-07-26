@@ -5,7 +5,7 @@
 - Tables: `snake_case`, plural (`trade_breaks`, `case_notes`).
 - Primary keys: `id` (unsigned bigint, auto-increment). Public-facing references use a separate human-readable `reference` column (e.g., `TBIP-2026-000123`), never the raw id, so ids are never exposed as business identifiers.
 - Foreign keys: `<singular_table>_id` (e.g., `trade_break_id`).
-- Enum-like columns stored as `string` backed by a PHP `Enum` at the application layer, not MySQL `ENUM` columns — avoids painful migrations when a new status value is added.
+- Enum-like columns stored as `string` backed by a PHP `Enum` at the application layer, not native database `ENUM` columns — avoids painful migrations when a new status value is added (PostgreSQL's native `ENUM` type has this same widening cost as MySQL's, so the same reasoning applies regardless of engine — see DECISIONS.md ADR-004, ADR-008).
 - Timestamps: `created_at`, `updated_at` on every table. Domain-specific timestamps use explicit names (`resolved_at`, `approved_at`, `sla_due_at`).
 - Money columns: stored as `bigint` in minor units (cents) with a paired `currency` `char(3)` column — never `float`/`decimal` rounding ambiguity for financial amounts.
 
@@ -90,4 +90,4 @@ Transactional/audit-relevant tables (`trades`, `payments`, `trade_breaks`, `case
 
 ## 8. Partitioning Discussion
 
-At the data volumes a single Ops desk or bank generates (thousands, not billions, of trades/payments per day), MySQL partitioning is not warranted for Phase 1–6 — a well-indexed single table performs adequately and keeps operational simplicity. If volumes grow materially (a future high-throughput module), `trades`/`payments` are natural candidates for range partitioning by `trade_date`/`value_date`, since queries and the immutability of past partitions align well with that key. This is documented as a future option, not a current implementation.
+At the data volumes a single Ops desk or bank generates (thousands, not billions, of trades/payments per day), table partitioning is not warranted for Phase 1–6 — a well-indexed single table performs adequately and keeps operational simplicity. If volumes grow materially (a future high-throughput module), `trades`/`payments` are natural candidates for PostgreSQL declarative range partitioning by `trade_date`/`value_date`, since queries and the immutability of past partitions align well with that key. This is documented as a future option, not a current implementation.

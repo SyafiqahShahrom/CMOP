@@ -105,3 +105,20 @@ Each ADR follows: Problem, Options Considered, Decision, Tradeoffs. Numbered seq
 **Decision**: Option 1. See ARCHITECTURE.md §6 and DATABASE.md §6.
 
 **Tradeoffs**: Breaks the project's general pattern of "events for cross-domain communication" (ARCHITECTURE.md §6) as a deliberate, called-out exception, and adds (marginal) latency to the request that makes the mutation. In exchange, guarantees an audit record can never be lost to a failed/delayed queue job — for a system whose core value proposition is audit defensibility (PROJECT.md §3), an eventually-consistent or possibly-lost audit trail would undermine the product's reason for existing. This tradeoff is judged worth making precisely because audit-write volume is low relative to typical async workloads (queue file imports, notifications), so the latency cost is negligible in practice.
+
+---
+
+## ADR-008: Primary Database — PostgreSQL via Supabase, Superseding MySQL
+
+**Problem**: `docs/PROJECT.md`, `docs/ARCHITECTURE.md`, and `docs/DATABASE.md` originally fixed MySQL as the database engine (ADR-002's "modular monolith" rationale is engine-agnostic, but the stack list named MySQL specifically). During Milestone 1 implementation, using the developer's local MySQL instance turned out to risk connecting against a real work database on the same machine rather than an isolated project database — an operational hazard for local development, independent of any technical merit of MySQL itself. Supabase was proposed as a fully isolated, hosted database rather than local MySQL.
+
+**Options considered**:
+1. Keep MySQL, but require every contributor to run it exclusively inside Docker Compose (as already planned in `docs/DEPLOYMENT.md` §1) so a host-level MySQL instance is never touched.
+2. Switch the project's primary database engine to PostgreSQL, hosted on Supabase, for both local development and the target deployment environment.
+3. Keep MySQL for the deployed environment but use Supabase/Postgres only for local development — two engines to support.
+
+**Decision**: Option 2. PostgreSQL, via a Supabase-hosted instance, is now the project's primary database for local development and production, superseding MySQL everywhere it was previously specified. This ADR supersedes the MySQL references in ADR-002 (which itself is otherwise unaffected — "modular monolith over microservices" did not depend on the database engine) and updates the stack decision recorded in `docs/PROJECT.md` §10.
+
+**Tradeoffs**: Loses Option 1's zero-risk path of simply enforcing "always run MySQL in Docker" — that would have kept a single engine without the migration cost of rewriting engine-specific schema/doc references. Loses nothing technically significant versus MySQL: none of this project's prior schema decisions were MySQL-specific (ADR-003's bigint-minor-units money strategy and ADR-004's PHP-enum-over-native-enum strategy both apply identically to PostgreSQL; PostgreSQL's native `ENUM` type has the same "painful to widen" problem MySQL's does, so ADR-004's reasoning is unchanged). Gains a materially simpler deployment story: `docs/DEPLOYMENT.md` §8 had already flagged that Render's managed database offering is Postgres-first and MySQL there required a third-party add-on — moving to Postgres removes that friction entirely, so hosting and local development now target the same engine family end-to-end. Rejected Option 3 (two engines) as pure complexity with no offsetting benefit — this project has no MySQL-specific feature dependency that would justify maintaining schema/migration compatibility with two database engines.
+
+**Follow-up documentation updates required by this ADR**: `docs/PROJECT.md` §10 (constraint list), `docs/ARCHITECTURE.md` (stack references), `docs/DATABASE.md` (any MySQL-specific wording, e.g. §8 Partitioning Discussion's `ALTER TABLE` framing), `docs/DEPLOYMENT.md` (Docker Compose service list, CI service container, §8 Render section), and the Milestone 1 implementation plan (`docs/superpowers/plans/2026-07-26-milestone-1-foundation.md`) Global Constraints and Task 1/Task 7 content.

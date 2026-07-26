@@ -8,7 +8,7 @@ Docker Compose is the only supported local setup — no "install PHP/MySQL/Redis
 docker compose up
 ```
 
-Services: `app` (PHP-FPM), `nginx`, `mysql`, `redis`, `queue` (worker), `scheduler`, `mailpit` (SMTP catcher for local email testing), `vite` (frontend dev server with HMR). `minio` is optional, used only if S3-compatible object storage is being exercised locally instead of the local disk driver.
+Services: `app` (PHP-FPM), `nginx`, `redis`, `queue` (worker), `scheduler`, `mailpit` (SMTP catcher for local email testing), `vite` (frontend dev server with HMR). There is no local database container: the application connects to a Supabase-hosted PostgreSQL instance (a dedicated project, isolated from any other database on the developer's machine) for both local development and production — see DATABASE.md and DECISIONS.md ADR-008. `minio` is optional, used only if S3-compatible object storage is being exercised locally instead of the local disk driver.
 
 ## 2. Docker & Compose
 
@@ -21,7 +21,7 @@ Services: `app` (PHP-FPM), `nginx`, `mysql`, `redis`, `queue` (worker), `schedul
 Standard Laravel `.env` — never committed; `.env.example` documents every required key with a safe placeholder. Categories:
 
 - **App**: `APP_KEY`, `APP_ENV`, `APP_URL`, `APP_DEBUG` (always `false` outside local).
-- **Database**: `DB_*` — connection to MySQL.
+- **Database**: `DB_*` — connection to the Supabase-hosted PostgreSQL instance (`DB_CONNECTION=pgsql`, plus host/port/database/username/password for that project). `DB_PASSWORD` is never committed, even as a placeholder value that looks real — `.env.example` documents the variable name only.
 - **Redis**: `REDIS_*` — session, cache, queue connections.
 - **Mail**: `MAIL_*` — Mailpit locally, real SMTP/provider in higher environments.
 - **Queue**: `QUEUE_CONNECTION=redis`.
@@ -52,12 +52,12 @@ Secrets in non-local environments are injected via the hosting platform's secret
                                    |
               -------------------------------------------
               |                |               |
-        [ MySQL (primary) ] [ Redis ]   [ Object storage (S3-compatible) ]
+        [ PostgreSQL (Supabase, managed) ] [ Redis ]   [ Object storage (S3-compatible) ]
               |
         [ queue workers ]  [ scheduler (single instance) ]
 ```
 
-Web tier scales horizontally behind the load balancer; queue workers scale independently per queue based on backlog; MySQL and Redis are managed services in production rather than self-hosted containers, consistent with ARCHITECTURE.md §10's "vertical/managed-services-first" scaling stance.
+Web tier scales horizontally behind the load balancer; queue workers scale independently per queue based on backlog; the database is a managed Supabase PostgreSQL instance and Redis is a managed service in production rather than self-hosted containers, consistent with ARCHITECTURE.md §10's "vertical/managed-services-first" scaling stance.
 
 ## 7. CI/CD (GitHub Actions)
 
@@ -65,7 +65,7 @@ Pipeline stages on every PR and on merge to `main`:
 
 1. **Lint** — Laravel Pint (PHP style), ESLint/Prettier (frontend).
 2. **Static analysis** — PHPStan.
-3. **Test** — Pest (unit + feature), against a real MySQL service container (not SQLite-in-memory, to catch MySQL-specific behavior — e.g., collation, `bigint` money columns — before production).
+3. **Test** — Pest (unit + feature), against a real PostgreSQL service container (not SQLite-in-memory, to catch engine-specific behavior — e.g., collation, `bigint` money columns — before production, and to match the Supabase-hosted PostgreSQL used in every real environment).
 4. **Build** — frontend asset build (Vite), Docker image build.
 5. **Deploy** (main branch only, after all above pass) — push image, trigger platform deploy, run `php artisan migrate --force` as a release step before traffic cutover.
 
@@ -75,7 +75,7 @@ No stage is skippable via a manual override in the pipeline — a red pipeline b
 
 Render is the target hosting platform for the demoable/portfolio deployment: a `web` service (Docker, the `production` Dockerfile target), a `worker` service (queue), and a `cron` job (scheduler tick, since Render's native cron suits the single-instance scheduler requirement in §5 well).
 
-**Note on database**: Render's managed database offering is Postgres-first. The project's managed MySQL requirement (§6) is provisioned via a third-party managed MySQL add-on rather than Render's native offering — this is documented here as a deployment-target-specific detail, not a change to the stack decision recorded in ARCHITECTURE.md/DECISIONS.md.
+**Note on database**: the database itself is not hosted on Render at all — it is the same Supabase-managed PostgreSQL instance used in local development (see §1, DECISIONS.md ADR-008), reached over its connection string like any other external managed Postgres. This removes the MySQL/Render engine mismatch an earlier version of this document flagged as a friction point (Render's managed database offering is Postgres-first) — using Postgres end-to-end means there is no longer a "which platform hosts the database" decision to make separately from "which platform hosts the app."
 
 ## 9. Migration Strategy
 
