@@ -12,7 +12,7 @@ class DeskFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => $this->faker->company() . ' Desk',
+            'name' => $this->faker->company().' Desk',
             'entity' => 'CMOP Bank plc',
             'region' => $this->faker->randomElement(['EMEA', 'APAC', 'AMERICAS']),
         ];

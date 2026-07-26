@@ -10,7 +10,7 @@ test('an admin can update any desk', function () {
     $admin->assignRole(CmopRole::Admin->value);
     $desk = Desk::factory()->create();
 
-    expect((new DeskPolicy())->update($admin, $desk))->toBeTrue();
+    expect((new DeskPolicy)->update($admin, $desk))->toBeTrue();
 });
 
 test('an analyst cannot update desk configuration', function () {
@@ -18,12 +18,12 @@ test('an analyst cannot update desk configuration', function () {
     $analyst->assignRole(CmopRole::Analyst->value);
     $desk = Desk::factory()->create();
 
-    expect((new DeskPolicy())->update($analyst, $desk))->toBeFalse();
+    expect((new DeskPolicy)->update($analyst, $desk))->toBeFalse();
 });
 
 test('any authenticated user can view the desk list', function () {
     $analyst = User::factory()->create();
     $analyst->assignRole(CmopRole::Analyst->value);
 
-    expect((new DeskPolicy())->viewAny($analyst))->toBeTrue();
+    expect((new DeskPolicy)->viewAny($analyst))->toBeTrue();
 });

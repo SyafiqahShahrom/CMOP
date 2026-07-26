@@ -2,6 +2,7 @@
 
 namespace App\Domains\Administration\Models;
 
+use Database\Factories\DeskFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -14,6 +15,6 @@ class Desk extends Model
 
     protected static function newFactory()
     {
-        return \Database\Factories\DeskFactory::new();
+        return DeskFactory::new();
     }
 }
