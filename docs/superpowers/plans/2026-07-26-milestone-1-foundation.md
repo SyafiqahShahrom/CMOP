@@ -6,17 +6,17 @@
 
 **Architecture:** Single Laravel 12 app using the `app/Domains/{Domain}` + `app/Shared` structure from `docs/ARCHITECTURE.md`. This milestone only populates the `Authentication` and `Administration` domains (users, desks, roles/permissions) plus a thin `resources/js` Inertia/Vue 3 frontend. Every other domain folder is created empty with a `.gitkeep` so the structure is visible from commit one but no other business logic is implemented yet (per `docs/ROADMAP.md` Milestone 1 scope).
 
-**Tech Stack:** Laravel 12, PHP 8.3, MySQL 8, Redis, Laravel Sanctum (SPA cookie auth), Spatie Permission, Spatie Activitylog (installed but not wired to models yet — that's Milestone 4), Vue 3, Inertia.js, TailwindCSS, Pest, PHPStan, Laravel Pint, Docker Compose, GitHub Actions.
+**Tech Stack:** Laravel 12, PHP 8.3, PostgreSQL (Supabase-hosted — see DECISIONS.md ADR-008; supersedes this plan's original MySQL 8), Redis, Laravel Sanctum (SPA cookie auth), Spatie Permission, Spatie Activitylog (installed but not wired to models yet — that's Milestone 4), Vue 3, Inertia.js, TailwindCSS, Pest, PHPStan, Laravel Pint, Docker Compose, GitHub Actions.
 
 ## Global Constraints
 
-- Laravel 12 / PHP 8.3+ / MySQL / Redis — fixed stack, no substitutions (`docs/PROJECT.md` §10, `docs/ARCHITECTURE.md`).
+- Laravel 12 / PHP 8.3+ / PostgreSQL (Supabase-hosted) / Redis — fixed stack, no substitutions (`docs/PROJECT.md` §10, `docs/ARCHITECTURE.md`, `docs/DECISIONS.md` ADR-008). **Amendment (mid-Milestone-1):** the plan originally specified MySQL; this was changed to Supabase-hosted PostgreSQL after Task 1 to avoid local MySQL colliding with an unrelated database on the developer's machine. Task 1's Docker artifacts (`docker/php/Dockerfile`'s `pdo_mysql` extension, `docker-compose.yml`'s `mysql` service, `.env.example`'s `DB_*` values) were amended accordingly by the controller directly — Tasks 2 onward are written against Postgres.
 - Modular monolith, DDD folder layout under `app/Domains/` + `app/Shared/` — no code outside this structure except framework-required paths (`docs/ARCHITECTURE.md` §2).
 - Controllers are thin — call one Action/Service, return an Inertia response (`docs/ARCHITECTURE.md` §4). No business logic in controllers, ever.
 - RBAC via Spatie Permission, roles from `docs/SECURITY.md` §2: `analyst`, `team_lead`, `ops_manager`, `compliance`, `admin`.
 - Every domain subfolder set is `Actions/ Services/ DTOs/ Policies/ Events/ Listeners/ Jobs/ Models/ Requests/ Resources/ Enums/ Exceptions/ Queries/ Support/` — only create the ones a domain actually needs (`docs/ARCHITECTURE.md` §2).
-- Docker Compose is the only supported local dev path (`docs/DEPLOYMENT.md` §1) — services: `app`, `nginx`, `mysql`, `redis`, `queue`, `scheduler`, `mailpit`, `vite`.
-- CI stages: Lint (Pint, ESLint) → Static analysis (PHPStan) → Test (Pest against real MySQL service container, not SQLite) → Build (`docs/DEPLOYMENT.md` §7). A red pipeline blocks merge.
+- Docker Compose is the local dev path for the app/queue/scheduler/nginx processes (`docs/DEPLOYMENT.md` §1) — services: `app`, `nginx`, `redis`, `queue`, `scheduler`, `mailpit`, `vite`. There is no local database container — the app connects to a Supabase-hosted PostgreSQL project instead (see amendment above).
+- CI stages: Lint (Pint, ESLint) → Static analysis (PHPStan) → Test (Pest against a real PostgreSQL service container, not SQLite) → Build (`docs/DEPLOYMENT.md` §7). A red pipeline blocks merge.
 - Money columns, enum-as-PHP-enum, soft-delete rules from `docs/DATABASE.md` §1 apply to any table this milestone creates (only `users`, `desks`, Spatie's own tables here — no money columns in this milestone).
 - Desk scoping and maker-checker are enforced via Policies at the query/Action layer, never UI-only (`docs/SECURITY.md` §4-5) — this milestone lays the RBAC/Policy groundwork; maker-checker itself is Milestone 4.
 
@@ -1385,15 +1385,16 @@ jobs:
     runs-on: ubuntu-latest
     needs: static-analysis
     services:
-      mysql:
-        image: mysql:8.0
+      postgres:
+        image: postgres:16
         env:
-          MYSQL_DATABASE: cmop_testing
-          MYSQL_ROOT_PASSWORD: secret
+          POSTGRES_DB: cmop_testing
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: secret
         ports:
-          - 3306:3306
+          - 5432:5432
         options: >-
-          --health-cmd="mysqladmin ping"
+          --health-cmd="pg_isready -U postgres"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
@@ -1402,20 +1403,25 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
+          extensions: pdo_pgsql
       - run: composer install --prefer-dist --no-progress
       - run: cp .env.example .env
       - run: php artisan key:generate
       - run: php artisan migrate --force
         env:
+          DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
+          DB_PORT: 5432
           DB_DATABASE: cmop_testing
-          DB_USERNAME: root
+          DB_USERNAME: postgres
           DB_PASSWORD: secret
       - run: php artisan test
         env:
+          DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
+          DB_PORT: 5432
           DB_DATABASE: cmop_testing
-          DB_USERNAME: root
+          DB_USERNAME: postgres
           DB_PASSWORD: secret
 
   build:
