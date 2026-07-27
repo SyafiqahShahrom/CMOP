@@ -15,8 +15,7 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 
 FROM base AS development
 COPY . .
-COPY --from=dependencies /var/www/html/vendor ./vendor
-RUN composer dump-autoload
+RUN composer install --prefer-dist
 CMD ["php-fpm"]
 
 FROM base AS production

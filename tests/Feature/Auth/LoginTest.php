@@ -38,6 +38,29 @@ test('a user with invalid credentials is not logged in', function () {
     $this->assertGuest();
 });
 
+test('login attempts are rate limited after 10 attempts per minute', function () {
+    User::factory()->create([
+        'email' => 'amara@cmop.test',
+        'password' => bcrypt('password123'),
+    ]);
+
+    for ($i = 0; $i < 10; $i++) {
+        $response = $this->post('/login', [
+            'email' => 'amara@cmop.test',
+            'password' => 'wrong-password',
+        ]);
+
+        $response->assertStatus(302);
+    }
+
+    $response = $this->post('/login', [
+        'email' => 'amara@cmop.test',
+        'password' => 'wrong-password',
+    ]);
+
+    $response->assertStatus(429);
+});
+
 test('an inactive user cannot log in even with correct credentials', function () {
     User::factory()->create([
         'email' => 'inactive@cmop.test',

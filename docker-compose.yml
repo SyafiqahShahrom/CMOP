@@ -62,10 +62,8 @@ services:
       - "1025:1025"
 
   vite:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
-      target: development
+    image: node:20-alpine
+    working_dir: /var/www/html
     command: sh -c "npm install && npm run dev -- --host"
     volumes:
       - .:/var/www/html
