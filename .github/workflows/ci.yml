@@ -61,6 +61,7 @@ jobs:
           DB_DATABASE: cmop_testing
           DB_USERNAME: postgres
           DB_PASSWORD: secret
+          CACHE_STORE: array
       - run: php artisan test
         env:
           DB_CONNECTION: pgsql
@@ -69,6 +70,7 @@ jobs:
           DB_DATABASE: cmop_testing
           DB_USERNAME: postgres
           DB_PASSWORD: secret
+          CACHE_STORE: array
 
   build:
     runs-on: ubuntu-latest
